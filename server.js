@@ -96,10 +96,14 @@ app.post('/register',async(req,res)=>{
             return res.redirect('/login');
         }
         console.log('Now at hashing the password')
-        const hashedPassword=await bcrypt.hash(password, saltRounds);
-
-        console.log('The hashed password is',hashedPassword);
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
         
+        console.log('hashing the password')
+        // const hashedPassword=await bcrypt.hash(password, saltRounds);
+     
+        console.log('The hashed password is',hashedPassword);
+
         if(referrer){
             const referrees=await pool.query('INSERT INTO referral (referrerusername,referreeusername,referreefunds) VALUES ($1,$2,$3) RETURNING *',[referrer,username,referreeFunds]);
             const referers=referrees.rows[0];
