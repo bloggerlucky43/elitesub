@@ -18,7 +18,9 @@ const port=process.env.BD_PORT || 5000;
 console.log(port);
 
 
-const saltRounds=process.env.SALT_ROUND || 13;
+const saltRounds=process.env.SALT_ROUND || 20;
+console.log('The salt round is',saltRounds);
+
 env.config();
 
 
@@ -85,7 +87,7 @@ app.post('/register',async(req,res)=>{
     const referreeFunds=0;
 
 
-        // console.log(email,fullname,password,username)
+        console.log(email,fullname,password,username)
     try {
         const checkResult=await pool.query('SELECT * FROM users WHERE username=$1',[username]);
         console.log('Database queried successfully')
@@ -95,7 +97,9 @@ app.post('/register',async(req,res)=>{
         }
         console.log('Now at hashing the password')
         const hashedPassword=await bcrypt.hash(password, saltRounds);
+
         console.log('The hashed password is',hashedPassword);
+        
         if(referrer){
             const referrees=await pool.query('INSERT INTO referral (referrerusername,referreeusername,referreefunds) VALUES ($1,$2,$3) RETURNING *',[referrer,username,referreeFunds]);
             const referers=referrees.rows[0];
