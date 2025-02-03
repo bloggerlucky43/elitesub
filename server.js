@@ -78,14 +78,14 @@ app.post('/register',async(req,res)=>{
     const email=req.body.email.trim().toLowerCase();
     const password=req.body.password.trim();
     const telephone=req.body.phoneNumber
-    const fullname=req.body.fullName.trim();
+    const fullname=req.body.fullName
     const username=req.body.userName.trim().toLowerCase();
     const referrer=req.body.referrer
     console.log(referrer,'referrer code is');
     const referreeFunds=0;
 
 
-        // console.log(email,fullname,password,username)
+        console.log(email,fullname,password,username)
     try {
         const checkResult=await pool.query('SELECT * FROM users WHERE username=$1',[username]);
         if(checkResult.rows.length > 0){
@@ -93,16 +93,16 @@ app.post('/register',async(req,res)=>{
             return res.redirect('/login');
         }
         const hashedPassword=await bcrypt.hash(password, saltRounds);
-        // console.log(hashedPassword);
+        console.log(hashedPassword);
         if(referrer){
             const referrees=await pool.query('INSERT INTO referral (referrerusername,referreeusername,referreefunds) VALUES ($1,$2,$3) RETURNING *',[referrer,username,referreeFunds]);
             const referers=referrees.rows[0];
-            // console.log(referers);
+            console.log(referers);
             
         }
         const result=await pool.query('INSERT INTO users (email,password,telephone,fullname,username) VALUES ($1,$2,$3,$4,$5) RETURNING *',[email,hashedPassword,telephone,fullname,username])
         const user = result.rows[0];
-        // console.log(user)
+        console.log(user)
         res.status(200).json({ user: user, message:'Successfully registered'})
     } catch (error) {
         console.error('Error querying database',error)
