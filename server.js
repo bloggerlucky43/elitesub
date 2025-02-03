@@ -58,6 +58,9 @@ app.use(passport.session());
 
 const pool=new Pool({
     connectionString: process.env.DATABASE_URL,
+    ssl: {
+      rejectUnauthorized: false, // Disable certificate verification (for testing)
+    },
 });
 
 
@@ -585,7 +588,7 @@ passport.use(
 passport.serializeUser((user,done)=>{
   done(null,user.id);//serialize user by id
 })
-
+ 
 passport.deserializeUser(async (id, done) => {
   try {
     const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
