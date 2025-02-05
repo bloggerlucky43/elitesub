@@ -565,7 +565,7 @@ async function updateTransaction(transactionReference, status, customerEmail, am
 
         // Insert transaction record
         await pool.query(
-          "INSERT INTO transactions (username, amountpaid,depositamount, charges,transactionreference) VALUES ($1, $2, $3,$4)",
+          "INSERT INTO transactions (username, amountpaid,depositamount, charges,transactionreference) VALUES ($1, $2, $3,$4,$5)",
           [customerUsername, amountPaid,depositAmount, charges,transactionReference]
         );
         await pool.query(
