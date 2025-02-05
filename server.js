@@ -382,7 +382,7 @@ const credentials=Buffer.from(`${paymentApi}:${secretKey}`).toString('base64');
     
     const requestBody={
       accountReference: accountReference,
-      accountName: `Elitesubpay`,
+      accountName: customerName,
       currencyCode: 'NGN',
       contractCode:"6694909849",
       customerEmail: customerEmail,
@@ -518,7 +518,8 @@ app.post("/webhook/monnify", async (req, res) => {
     }
     //process webhook if signature is valid
     const {eventData,eventType}=req.body;
-    const {transactionReference,amountPaid,paymentStatus,customer}=eventData; 
+    const { transactionReference, paymentReference, amountPaid, paymentStatus, customer } = eventData;
+ 
 
     const customerEmail = customer.email; // Extract customer email
 
@@ -544,7 +545,7 @@ app.post("/webhook/monnify", async (req, res) => {
 });
 
 async function updateTransaction(transactionReference, status, customerEmail, amountPaid, charges) {
-  // console.log(`Updating transaction ${transactionReference} with status: ${status}`);
+  console.log(`Updating transaction ${transactionReference} with status: ${status}`);
 
   try {
     const response = await pool.query("SELECT * FROM users WHERE email=$1", [customerEmail]);
@@ -554,8 +555,8 @@ async function updateTransaction(transactionReference, status, customerEmail, am
       const initialBalance = Number(response.rows[0].wallet);
       const newBalance = amountPaid + initialBalance;
 
-      // console.log(`Customer Username: ${customerUsername}`);
-      // console.log(`Initial Balance: ${initialBalance}, New Balance: ${newBalance}`);
+      console.log(`Customer Username: ${customerUsername}`);
+      console.log(`Initial Balance: ${initialBalance}, New Balance: ${newBalance}`);
 
       try {
         // Update wallet balance
