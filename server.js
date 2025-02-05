@@ -527,11 +527,12 @@ app.post("/webhook/monnify", async (req, res) => {
       console.log(`Payment successful for ${customerEmail}. Amount: ${amountPaid} and transaction reference is ${transactionReference}`);
       const amountPaidNum = Number(amountPaid);
       const charges = Number((0.015 * amountPaidNum).toFixed(2));
+      const depositAmount = amountPaidNum - charges;
 
       console.log("Amount deposited:", amountPaidNum);
       console.log("The charge for the recent deposit is:", charges);
 
-      await updateTransaction(paymentReference, "Successful", customerEmail, amountPaidNum, charges);
+      await updateTransaction(paymentReference, "Successful", customerEmail, amountPaid, depositAmount,charges);
     } else {
       console.log(`Payment failed or pending: ${paymentReference}`);
     }
@@ -544,7 +545,7 @@ app.post("/webhook/monnify", async (req, res) => {
   }
 });
 
-async function updateTransaction(transactionReference, status, customerEmail, amountPaid, charges) {
+async function updateTransaction(transactionReference, status, customerEmail, amountPaid, depositAmount, charges) {
   console.log(`Updating transaction ${transactionReference} with status: ${status}`);
 
   try {
@@ -553,7 +554,7 @@ async function updateTransaction(transactionReference, status, customerEmail, am
     if (response.rows.length > 0) {
       const customerUsername = response.rows[0].username;
       const initialBalance = Number(response.rows[0].wallet);
-      const newBalance = amountPaid + initialBalance;
+      const newBalance = depositAmount + initialBalance;
 
       console.log(`Customer Username: ${customerUsername}`);
       console.log(`Initial Balance: ${initialBalance}, New Balance: ${newBalance}`);
@@ -564,10 +565,14 @@ async function updateTransaction(transactionReference, status, customerEmail, am
 
         // Insert transaction record
         await pool.query(
-          "INSERT INTO transactions (username, amountpaid, charges,transactionreference) VALUES ($1, $2, $3,$4)",
-          [customerUsername, amountPaid, charges,transactionReference]
+          "INSERT INTO transactions (username, amountpaid,depositamount, charges,transactionreference) VALUES ($1, $2, $3,$4)",
+          [customerUsername, amountPaid,depositAmount, charges,transactionReference]
         );
-
+        await pool.query(
+          "INSERT INTO summary (username,depositamount,transactionreference) VALUES($1,$2,$3)",
+          [customerUsername,depositAmount,transactionReference]
+        )
+        console.log('Wallet funded succesfully')
         console.log(`Transaction updated successfully for ${customerUsername}`);
       } catch (error) {
         console.error("Error updating user balance:", error);
