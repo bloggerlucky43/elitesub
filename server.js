@@ -15,11 +15,11 @@ import session from "express-session";
 const { Pool } = pkg
 const app=express();
 const port=process.env.BD_PORT || 5000;
-console.log(port);
+// console.log(port);
 
 
 const saltRounds=process.env.SALT_ROUND || 20;
-console.log('The salt round is',saltRounds);
+// console.log('The salt round is',saltRounds);
 
 env.config();
 
@@ -87,7 +87,7 @@ app.post('/register',async(req,res)=>{
     const referreeFunds=0;
 
 
-        console.log(email,fullname,password,username)
+        // console.log(email,fullname,password,username)
     try {
         const checkResult=await pool.query('SELECT * FROM users WHERE username=$1',[username]);
         console.log('Database queried successfully')
@@ -95,24 +95,24 @@ app.post('/register',async(req,res)=>{
             console.log('user is registered');
             return res.redirect('/login');
         }
-        console.log('Now at hashing the password')
+        // console.log('Now at hashing the password')
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
         
-        console.log('hashing the password')
-        // const hashedPassword=await bcrypt.hash(password, saltRounds);
+        // console.log('hashing the password')
+      
      
-        console.log('The hashed password is',hashedPassword);
+        // console.log('The hashed password is',hashedPassword);
 
         if(referrer){
             const referrees=await pool.query('INSERT INTO referral (referrerusername,referreeusername,referreefunds) VALUES ($1,$2,$3) RETURNING *',[referrer,username,referreeFunds]);
             const referers=referrees.rows[0];
-            console.log(referers);
+            // console.log(referers);
             
         }
         const result=await pool.query('INSERT INTO users (email,password,telephone,fullname,username) VALUES ($1,$2,$3,$4,$5) RETURNING *',[email,hashedPassword,telephone,fullname,username])
         const user = result.rows[0];
-        console.log(user)
+        // console.log(user)
         res.status(200).json({ user: user, message:'Successfully registered'})
     } catch (error) {
         console.error('Error querying database',error)
@@ -160,8 +160,7 @@ app.post('/topdata',async(req,res)=>{
     return res.status(400).json({message:'All fields are required'})
   }
 
-  var notePad= `${dataPlan} has been sent to ${mobileNumber}`
-  console.log(notePad);
+ 
   try {
     var str=network
     const network_id=parseInt(str,10)
@@ -189,15 +188,16 @@ app.post('/topdata',async(req,res)=>{
 
     try {
       const transactionReference = `REF-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
-      console.log(transactionReference)
+      // console.log(transactionReference)
+      var notePad= `${dataPlan} has been sent to ${mobileNumber}`
+      console.log(notePad);
 
-      await pool.query('INSERT INTO summary (userid,note,amountpaid,transactionreference) VALUES($1,$2,$3,$4)',[userId,notePad,amountPaid,transactionReference])
+      await pool.query('INSERT INTO transactions (userid,note,transactionreference) VALUES($1,$2,$3)',[userId,notePad,transactionReference])
 
       console.log('Successful');
       
     } catch (error) {
-      console.error('Error inserting into the database,',error)
-      
+      console.error('Error inserting into the database,',error) 
     }
 
 
@@ -228,6 +228,20 @@ app.get('/get-balance/:userIDD',async(req,res)=>{
   }
 });
 
+app.get('/get-summary/:userName',async(req,res)=>{
+  const {userName}=req.params;
+  // console.log(userName,'The username at getsummary');
+  try {
+    const response=await pool.query('SELECT * FROM summary WHERE username=$1',[userName])
+    if(response.rows.length >0){
+      res.status(200).json({summary:response.rows})
+      // console.log(response.rows)
+    }
+  } catch (error) {
+    console.error('Error getting the summary',error)
+  }
+  
+})
 
 app.get('/referrals/:userName', async (req, res) => {3
   const { userName } = req.params;
@@ -252,24 +266,7 @@ app.get('/referrals/:userName', async (req, res) => {3
   }
 });
 
-// app.get('/referrals/:userName',async(req,res)=>{
-//   const userName=req.params;
-//   // console.log(userName);
-//   try {
-//     const result=await pool.query('SELECT * FROM referral WHERE referrerusername=$1',[userName])
-//     if(result.rows.length >0){
-//       res.status(200).json({ referree: result.rows[0].referree, funds: result.rows[0].referreeFunds })
-//       // console.log(result.rows[0].referree,result.rows[0].referreeFunds);
-      
-//     }
-//     else{
-//       return res.json({ message:"No referred user"})
-//     }
-//   } catch (error) {
-//     console.error('error querying database',error) 
-//   }
-  
-// })
+
 
 
 app.post('/update', async (req, res) => {
@@ -317,20 +314,30 @@ app.post('/topairtime',async(req,res)=>{
       Ported_number: true,
       airtime_type: airtimeType
     }
-
-    console.log(airtimeData);
-    
+    // console.log(airtimeData);
     const api_key=process.env.SMOOTSELL_API_KEY
     // console.log(api_key);
-    
-    
-    const response=await axios.post(`https://smoothsell.com.ng/api/topup/`, JSON.stringify(airtimeData), {
+    await axios.post(`https://smoothsell.com.ng/api/topup/`, JSON.stringify(airtimeData), {
       headers:{
         Authorization: `Token ${api_key}`,
         "Content-Type": "application/json",
       },
     })
     console.log('successful')
+    
+    try {
+      const transactionReference = `REF-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
+      // console.log(transactionReference)
+      var notePad= `${amount} ${airtimeType} has been sent to ${mobileNumber}`
+      console.log(notePad);
+
+      await pool.query('INSERT INTO transactions (userid,note,transactionreference) VALUES($1,$2,$3)',[userId,notePad,transactionReference])
+
+      console.log('Successful');
+      
+    } catch (error) {
+      console.error('Error inserting into the database,',error) 
+    }
     res.status(200).json({message:'Successful'})
   } catch (error) {
      res.status(500).json({error:'An error occured during top up'})
@@ -341,7 +348,7 @@ app.post('/topairtime',async(req,res)=>{
 
 app.post('/create',async(req,res)=>{
   const{customerEmail,customerName, nin,userIDD}=req.body
-  console.log('Here');
+  // console.log('Here');
   
   if(!customerEmail || !customerName || !nin){
     return res.status(500).json({
@@ -494,17 +501,19 @@ app.get('/accountno/:userIDD', async (req, res) => {
 });
 
 
+
+
 const MONNIFY_SECRET_KEY = process.env.PAYMENT_SECRET_KEY;
 
 app.post("/webhook/monnify", async (req, res) => {
  
   try {
-    console.log("Webhook received:", req.body);
+    // console.log("Webhook received:", req.body);
     const requestBody = JSON.stringify(req.body);
-    console.log("The request body from Monnify is", requestBody);
+    // console.log("The request body from Monnify is", requestBody);
 
     const transactionHash = req.headers["monnify-signature"]; // Hash sent by Monnify
-    console.log("Transaction hash sent by Monnify is", transactionHash);
+    // console.log("Transaction hash sent by Monnify is", transactionHash);
 
     // Compute the expected hash
     const expectedHash = crypto.createHmac("sha512", MONNIFY_SECRET_KEY)
@@ -529,8 +538,8 @@ app.post("/webhook/monnify", async (req, res) => {
       const charges = Number((0.015 * amountPaidNum).toFixed(2));
       const depositAmount = amountPaidNum - charges;
 
-      console.log("Amount deposited:", amountPaidNum);
-      console.log("The charge for the recent deposit is:", charges);
+      // console.log("Amount deposited:", amountPaidNum);
+      // console.log("The charge for the recent deposit is:", charges);
 
       await updateTransaction(paymentReference, "Successful", customerEmail, amountPaid, depositAmount,charges);
     } else {
@@ -546,7 +555,7 @@ app.post("/webhook/monnify", async (req, res) => {
 });
 
 async function updateTransaction(transactionReference, status, customerEmail, amountPaid, depositAmount, charges) {
-  console.log(`Updating transaction ${transactionReference} with status: ${status}`);
+  // console.log(`Updating transaction ${transactionReference} with status: ${status}`);
 
   try {
     const response = await pool.query("SELECT * FROM users WHERE email=$1", [customerEmail]);
@@ -556,8 +565,8 @@ async function updateTransaction(transactionReference, status, customerEmail, am
       const initialBalance = Number(response.rows[0].wallet);
       const newBalance = depositAmount + initialBalance;
 
-      console.log(`Customer Username: ${customerUsername}`);
-      console.log(`Initial Balance: ${initialBalance}, New Balance: ${newBalance}`);
+      // console.log(`Customer Username: ${customerUsername}`);
+      // console.log(`Initial Balance: ${initialBalance}, New Balance: ${newBalance}`);
 
       try {
         // Update wallet balance
