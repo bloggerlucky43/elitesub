@@ -346,88 +346,153 @@ app.post('/topairtime',async(req,res)=>{
 
 });
 
-app.post('/create',async(req,res)=>{
-  const{customerEmail,customerName, nin,userIDD}=req.body
-  // console.log('Here');
+// app.post('/create',async(req,res)=>{
+//   const{customerEmail,customerName, nin,userIDD}=req.body
+//   // console.log('Here');
   
-  if(!customerEmail || !customerName || !nin){
-    return res.status(500).json({
-      error: 'Missing environment variables contact admin'
-    })
+//   if(!customerEmail || !customerName || !nin){
+//     return res.status(500).json({
+//       error: 'Missing environment variables contact admin'
+//     })
+//   }
+
+// const accountReference = `REF-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+// // console.log(accountReference);
+// const paymentApi=process.env.PAYMENT_API_KEY;
+// const secretKey=process.env.PAYMENT_SECRET_KEY;
+// const baseUrl=process.env.BASE_URL;
+// // console.log(baseUrl);
+// // console.log(paymentApi,secretKey);
+// const credentials=Buffer.from(`${paymentApi}:${secretKey}`).toString('base64');
+// // console.log(credentials);
+  
+//   try {
+//     const response=await axios.post(`${baseUrl}/api/v1/auth/login`,{},{
+//       headers: {
+//         Authorization : `Basic ${credentials}`,
+//         "Content-Type": 'application/json'
+//       }
+//     })
+    
+//     // console.log(response.data);
+
+//     const accesstoken=response.data.responseBody.accessToken
+//     // console.log(accesstoken);
+
+//     if(!accesstoken || !customerName || !customerEmail || !nin ){
+//       return res.status(401).json({message:'Not Authenticated',
+//         error: 'nin,email,name are not available to authenticate'
+//       })
+//     }
+    
+    
+    
+//     const requestBody={
+//       accountReference: accountReference,
+//       accountName: customerName,
+//       currencyCode: 'NGN',
+//       contractCode:"6694909849",
+//       customerEmail: customerEmail,
+//       nin: nin,
+//       getAllAvailableBanks: true
+//     }
+
+//       try {
+//       const result=  await axios.post(`${baseUrl}/api/v2/bank-transfer/reserved-accounts`, requestBody,{
+//           headers:{
+//             Authorization: `Bearer ${accesstoken}`,
+//             "Content-Type": "application/json"
+//           }
+//         })
+//         res.status(200).json({
+//           data: result.data
+//         })
+//         console.log(result.data);
+        
+        
+//         await pool.query(
+//           "UPDATE  users SET accountreference=$1 WHERE id=$2",[accountReference,userIDD]
+//         );
+//         res.status(200).json({message:'Updated successfully'})
+
+
+//       } catch (error) {
+//         console.error("Error Response:", error.response?.status, error.response?.data || error.message);
+//       }
+//   } catch (error) {
+//      res.status(500).json({
+//             error: 'Failed to generate access token.',
+//             details: error.response?.data || error.message,
+//         });
+//     console.error("Error Response:", error.response?.status, error.response?.data || error.message);
+//   }
+
+
+// });
+
+app.post('/create', async (req, res) => {
+  const { customerEmail, customerName, nin, userIDD } = req.body;
+
+  if (!customerEmail || !customerName || !nin) {
+    return res.status(400).json({
+      error: 'Missing required fields: email, name, or NIN'
+    });
   }
 
-const accountReference = `REF-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-// console.log(accountReference);
-const paymentApi=process.env.PAYMENT_API_KEY;
-const secretKey=process.env.PAYMENT_SECRET_KEY;
-const baseUrl=process.env.BASE_URL;
-// console.log(baseUrl);
-// console.log(paymentApi,secretKey);
-const credentials=Buffer.from(`${paymentApi}:${secretKey}`).toString('base64');
-// console.log(credentials);
-  
+  const accountReference = `REF-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+  const paymentApi = process.env.PAYMENT_API_KEY;
+  const secretKey = process.env.PAYMENT_SECRET_KEY;
+  const baseUrl = process.env.BASE_URL;
+  const credentials = Buffer.from(`${paymentApi}:${secretKey}`).toString('base64');
+
   try {
-    const response=await axios.post(`${baseUrl}/api/v1/auth/login`,{},{
+    // Step 1: Get Access Token
+    const response = await axios.post(`${baseUrl}/api/v1/auth/login`, {}, {
       headers: {
-        Authorization : `Basic ${credentials}`,
+        Authorization: `Basic ${credentials}`,
         "Content-Type": 'application/json'
       }
-    })
-    
-    // console.log(response.data);
+    });
 
-    const accesstoken=response.data.responseBody.accessToken
-    // console.log(accesstoken);
+    const accesstoken = response.data.responseBody.accessToken;
 
-    if(!accesstoken || !customerName || !customerEmail || !nin ){
-      return res.status(401).json({message:'Not Authenticated',
-        error: 'nin,email,name are not available to authenticate'
-      })
+    if (!accesstoken) {
+      return res.status(401).json({ message: 'Failed to authenticate' });
     }
-    
-    
-    
-    const requestBody={
-      accountReference: accountReference,
+
+    // Step 2: Create Bank Transfer Reserved Account
+    const requestBody = {
+      accountReference,
       accountName: customerName,
       currencyCode: 'NGN',
-      contractCode:"6694909849",
-      customerEmail: customerEmail,
-      nin: nin,
+      contractCode: "6694909849",
+      customerEmail,
+      nin,
       getAllAvailableBanks: true
-    }
+    };
 
-      try {
-      const result=  await axios.post(`${baseUrl}/api/v2/bank-transfer/reserved-accounts`, requestBody,{
-          headers:{
-            Authorization: `Bearer ${accesstoken}`,
-            "Content-Type": "application/json"
-          }
-        })
-        res.status(200).json({
-          data: result.data
-        })
-        console.log(result.data);
-        
-        
-        await pool.query(
-          "UPDATE  users SET accountreference=$1 WHERE id=$2",[accountReference,userIDD]
-        );
-        res.status(200).json({message:'Updated successfully'})
-
-
-      } catch (error) {
-        console.error("Error Response:", error.response?.status, error.response?.data || error.message);
+    const result = await axios.post(`${baseUrl}/api/v2/bank-transfer/reserved-accounts`, requestBody, {
+      headers: {
+        Authorization: `Bearer ${accesstoken}`,
+        "Content-Type": "application/json"
       }
+    });
+
+    // Step 3: Update Database
+    await pool.query("UPDATE users SET accountreference=$1 WHERE id=$2", [accountReference, userIDD]);
+
+    res.status(200).json({
+      message: 'Updated successfully',
+      data: result.data
+    });
+
   } catch (error) {
-     res.status(500).json({
-            error: 'Failed to generate access token.',
-            details: error.response?.data || error.message,
-        });
-    console.error("Error Response:", error.response?.status, error.response?.data || error.message);
+    console.error("Error:", error.response?.data || error.message);
+    res.status(500).json({
+      error: 'Internal server error',
+      details: error.response?.data || error.message
+    });
   }
-
-
 });
 
 
