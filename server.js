@@ -398,7 +398,7 @@ const credentials=Buffer.from(`${paymentApi}:${secretKey}`).toString('base64');
     }
 
       try {
-        await axios.post(`${baseUrl}/api/v2/bank-transfer/reserved-accounts`, requestBody,{
+      const result=  await axios.post(`${baseUrl}/api/v2/bank-transfer/reserved-accounts`, requestBody,{
           headers:{
             Authorization: `Bearer ${accesstoken}`,
             "Content-Type": "application/json"
@@ -407,6 +407,8 @@ const credentials=Buffer.from(`${paymentApi}:${secretKey}`).toString('base64');
         res.status(200).json({
           data: result.data
         })
+        console.log(result.data);
+        
         
         await pool.query(
           "UPDATE  users SET accountreference=$1 WHERE id=$2",[accountReference,userIDD]
