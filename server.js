@@ -540,8 +540,8 @@ app.post("/webhook/monnify", async (req, res) => {
       const charges = Number((0.015 * amountPaidNum).toFixed(2));
       const depositAmount = amountPaidNum - charges;
 
-      // console.log("Amount deposited:", amountPaidNum);
-      // console.log("The charge for the recent deposit is:", charges);
+      console.log("Amount deposited:", amountPaidNum);
+      console.log("The charge for the recent deposit is:", charges);
 
       await updateTransaction(paymentReference, "Successful", customerEmail, amountPaid, depositAmount,charges);
     } else {
@@ -567,8 +567,8 @@ async function updateTransaction(transactionReference, status, customerEmail, am
       const initialBalance = Number(response.rows[0].wallet);
       const newBalance = depositAmount + initialBalance;
 
-      // console.log(`Customer Username: ${customerUsername}`);
-      // console.log(`Initial Balance: ${initialBalance}, New Balance: ${newBalance}`);
+      console.log(`Customer Username: ${customerUsername}`);
+      console.log(`Initial Balance: ${initialBalance}, New Balance: ${newBalance}`);
 
       try {
         // Update wallet balance
