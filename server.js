@@ -465,7 +465,7 @@ app.post('/create', async (req, res) => {
       accountReference,
       accountName: customerName,
       currencyCode: 'NGN',
-      contractCode: "6694909849",
+      contractCode: "121231450768",
       customerEmail,
       nin,
       getAllAvailableBanks: true
