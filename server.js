@@ -81,7 +81,7 @@ app.post('/register',async(req,res)=>{
     const password=req.body.password.trim();
     const telephone=req.body.phoneNumber
     const fullname=req.body.fullName.trim().toLowerCase();
-    const username=req.body.userName.trim()
+    const username=req.body.userName.trim().toLowerCase();
     const referrer=req.body.referrer
     console.log(referrer,'referrer code is');
     const referreeFunds=0;
