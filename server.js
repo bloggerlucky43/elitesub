@@ -155,16 +155,17 @@ app.post('/login', (req, res, next) => {
 
 app.post('/topdata',async(req,res)=>{
   const {network,dataPlan,mobileNumber,userId,amountPaid}=req.body;
-  // console.log(req.body);
+  console.log(req.body);
   if(!network || !dataPlan || !mobileNumber || !userId){
     return res.status(400).json({message:'All fields are required'})
   }
 
- 
   try {
-    var str=network
-    const network_id=parseInt(str,10)
-    // console.log(network_id);
+    const network_id=Number(network);
+    if(isNaN(network_id)){
+      return res.status(400).json({ error: 'Invalid Network Id'})
+    }
+    console.log(network_id);
 
     const dataType={
       network: network_id,
@@ -174,35 +175,39 @@ app.post('/topdata',async(req,res)=>{
     }
     // console.log(dataType);
     const api_key=process.env.SMOOTSELL_API_KEY
-    // onsole.log(api_key);c
+  
     
-    await axios.post(`https://smoothsell.com.ng/api/data/`,JSON.stringify(dataType),
+    const response=await axios.post(`https://smoothsell.com.ng/api/data/`,JSON.stringify(dataType),
     {
       headers:{
         Authorization: `Token ${api_key}`,
         "Content-Type": "application/json"
       }
     },
-    )
-    res.status(200).json({message:'Successful'})
+    );
+    if(response.status !== 200){
+      console.error("API request failed:", response.data)
+      return res.status(500).json({ error: "Failed to process top-up request" });
+    }
 
+    
     try {
       const transactionReference = `REF-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
-      // console.log(transactionReference)
       var notePad= `${dataPlan} has been sent to ${mobileNumber}`
       console.log(notePad);
-
+      
       await pool.query('INSERT INTO transactions (userid,note,transactionreference) VALUES($1,$2,$3)',[userId,notePad,transactionReference])
-
+      
       console.log('Successful');
+      return res.status(200).json({ message: 'Successful' });
       
     } catch (error) {
-      console.error('Error inserting into the database,',error) 
+      console.error("Error:", error.response?.data || error.message);
+      return res.status(500).json({ error: 'An error occurred during top-up' });
     }
 
 
   } catch (error) {
-    // res.status(500).json({message: 'Successful'})
      res.status(500).json({error:'An error occured during top up'})
      console.error("Error Response:", error.response?.data || error.message)
   }
@@ -212,10 +217,11 @@ app.post('/topdata',async(req,res)=>{
 
 app.get('/get-balance/:userIDD',async(req,res)=>{
   const {userIDD}=req.params;
-  // console.log(userIDD,'The useridd at getbalance');
+  const user_id = parseInt(userIDD, 10); // Convert userId to integer
+  console.log(user_id,'The useridd at getbalance');
   
   try {
-    const result=await pool.query('SELECT * FROM users WHERE id=$1',[userIDD])
+    const result=await pool.query('SELECT * FROM users WHERE id=$1',[user_id])
     if(result.rows.length > 0){
       res.status(200).json({balance:result.rows[0].wallet, accountReference: result.rows[0].accountreference})
       // console.log(result.rows[0].wallet,result.rows[0].accountreference);
@@ -267,168 +273,88 @@ app.get('/referrals/:userName', async (req, res) => {3
 });
 
 
-
-
 app.post('/update', async (req, res) => {
-  const { balance, userIDD } = req.body;
-  // console.log(req.body);
-  
-  if (!userIDD || balance === undefined || balance === null) {
-    return res.status(400).json({ error: "Missing required fields" });
-  }
+    const { balance, userIDD } = req.body;
+    console.log("Received balance update request:", req.body);
 
-  try {
-    const result = await pool.query(
-      "UPDATE users SET wallet=$1 WHERE id=$2 RETURNING wallet",
-      [balance, userIDD]
-    );
-
-    // Handle case where no rows were updated
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "User not found" });
+    if (!userIDD || balance === undefined || balance === null) {
+        return res.status(400).json({ error: "Missing required fields" });
     }
 
-    res.status(200).json({ balance: result.rows[0].wallet });
-    // console.log("The new balance is:", result.rows[0].wallet);
-  } catch (error) {
-    console.error("Error updating the database wallet balance", error.message);
-    res.status(500).json({ error: "Internal server error" });
-  }
+    try {
+        const result = await pool.query(
+            "UPDATE users SET wallet = $1 WHERE id = $2 RETURNING wallet",
+            [balance, userIDD]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        console.log("Updated wallet balance:", result.rows[0].wallet);
+        return res.status(200).json({ balance: result.rows[0].wallet });
+
+    } catch (error) {
+        console.error("Error updating the database wallet balance:", error.message);
+        return res.status(500).json({ error: "Internal server error" });
+    }
 });
 
+app.post('/topairtime', async (req, res) => {
+  const { network, airtimeType, mobileNumber, amount, topay, userId } = req.body;
+  console.log("Received userId:", userId,network,airtimeType,mobileNumber,amount,topay);
 
-app.post('/topairtime',async(req,res)=>{
-  const { network, airtimeType, mobileNumber, amount, topay ,userId } = req.body;
-  if(!network || !airtimeType || !mobileNumber || !amount || !topay || !userId){
-    return res.status(400).json({message: 'All fields are required'})
+  if (!network || !airtimeType || !mobileNumber || !amount || !topay || !userId) {
+    return res.status(400).json({ message: "All fields are required" });
   }
 
   try {
-    var str=network
-    const network_id=parseInt(str,10)
-    
-    const airtimeData={
-      network : network_id,
+    const network_id = parseInt(network, 10); // Convert to integer
+    const user_id = parseInt(userId, 10); // Convert userId to integer
+
+    if (isNaN(user_id)) {
+      throw new Error("Invalid user ID format. It must be an integer.");
+    }
+
+    const airtimeData = {
+      network: network_id,
       amount: amount,
       mobile_number: mobileNumber,
       Ported_number: true,
       airtime_type: airtimeType
-    }
-    // console.log(airtimeData);
-    const api_key=process.env.SMOOTSELL_API_KEY
-    // console.log(api_key);
+    };
+
+    const api_key = process.env.SMOOTSELL_API_KEY;
+    
     await axios.post(`https://smoothsell.com.ng/api/topup/`, JSON.stringify(airtimeData), {
-      headers:{
+      headers: {
         Authorization: `Token ${api_key}`,
         "Content-Type": "application/json",
       },
-    })
-    console.log('successful')
-    
+    });
+
+    console.log("Airtime purchase successful");
+
     try {
       const transactionReference = `REF-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`;
-      // console.log(transactionReference)
-      var notePad= `${amount} ${airtimeType} has been sent to ${mobileNumber}`
-      console.log(notePad);
+      const notePad = `${amount} ${airtimeType} has been sent to ${mobileNumber}`;
 
-      await pool.query('INSERT INTO transactions (userid,note,transactionreference) VALUES($1,$2,$3)',[userId,notePad,transactionReference])
+      await pool.query(
+        "INSERT INTO transactions (userid, note, transactionreference) VALUES ($1, $2, $3)",
+        [user_id, notePad, transactionReference]
+      );
 
-      console.log('Successful');
-      
+      console.log("Transaction recorded successfully");
     } catch (error) {
-      console.error('Error inserting into the database,',error) 
+      console.error("Database Insert Error:", error);
     }
-    res.status(200).json({message:'Successful'})
+
+    res.status(200).json({ message: "Successful" });
   } catch (error) {
-     res.status(500).json({error:'An error occured during top up'})
-     console.error("Error Response:", error.response?.data || error.message);
+    console.error("🚨 Top-up API:", error);
+    res.status(500).json({ error: "Error occurred during top up" });
   }
-
 });
-
-// app.post('/create',async(req,res)=>{
-//   const{customerEmail,customerName, nin,userIDD}=req.body
-//   // console.log('Here');
-  
-//   if(!customerEmail || !customerName || !nin){
-//     return res.status(500).json({
-//       error: 'Missing environment variables contact admin'
-//     })
-//   }
-
-// const accountReference = `REF-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-// // console.log(accountReference);
-// const paymentApi=process.env.PAYMENT_API_KEY;
-// const secretKey=process.env.PAYMENT_SECRET_KEY;
-// const baseUrl=process.env.BASE_URL;
-// // console.log(baseUrl);
-// // console.log(paymentApi,secretKey);
-// const credentials=Buffer.from(`${paymentApi}:${secretKey}`).toString('base64');
-// // console.log(credentials);
-  
-//   try {
-//     const response=await axios.post(`${baseUrl}/api/v1/auth/login`,{},{
-//       headers: {
-//         Authorization : `Basic ${credentials}`,
-//         "Content-Type": 'application/json'
-//       }
-//     })
-    
-//     // console.log(response.data);
-
-//     const accesstoken=response.data.responseBody.accessToken
-//     // console.log(accesstoken);
-
-//     if(!accesstoken || !customerName || !customerEmail || !nin ){
-//       return res.status(401).json({message:'Not Authenticated',
-//         error: 'nin,email,name are not available to authenticate'
-//       })
-//     }
-    
-    
-    
-//     const requestBody={
-//       accountReference: accountReference,
-//       accountName: customerName,
-//       currencyCode: 'NGN',
-//       contractCode:"6694909849",
-//       customerEmail: customerEmail,
-//       nin: nin,
-//       getAllAvailableBanks: true
-//     }
-
-//       try {
-//       const result=  await axios.post(`${baseUrl}/api/v2/bank-transfer/reserved-accounts`, requestBody,{
-//           headers:{
-//             Authorization: `Bearer ${accesstoken}`,
-//             "Content-Type": "application/json"
-//           }
-//         })
-//         res.status(200).json({
-//           data: result.data
-//         })
-//         console.log(result.data);
-        
-        
-//         await pool.query(
-//           "UPDATE  users SET accountreference=$1 WHERE id=$2",[accountReference,userIDD]
-//         );
-//         res.status(200).json({message:'Updated successfully'})
-
-
-//       } catch (error) {
-//         console.error("Error Response:", error.response?.status, error.response?.data || error.message);
-//       }
-//   } catch (error) {
-//      res.status(500).json({
-//             error: 'Failed to generate access token.',
-//             details: error.response?.data || error.message,
-//         });
-//     console.error("Error Response:", error.response?.status, error.response?.data || error.message);
-//   }
-
-
-// });
 
 app.post('/create', async (req, res) => {
   const { customerEmail, customerName, nin, userIDD } = req.body;
@@ -639,11 +565,7 @@ async function updateTransaction(transactionReference, status, customerEmail, am
         // Update wallet balance
         await pool.query("UPDATE users SET wallet=$2 WHERE username=$1", [customerUsername, newBalance]);
 
-        // Insert transaction record
-        await pool.query(
-          "INSERT INTO transactions (username, amountpaid,depositamount, charges,transactionreference) VALUES ($1, $2, $3,$4,$5)",
-          [customerUsername, amountPaid,depositAmount, charges,transactionReference]
-        );
+        // Insert summary record
         await pool.query(
           "INSERT INTO summary (username,depositamount,transactionreference) VALUES($1,$2,$3)",
           [customerUsername,depositAmount,transactionReference]
