@@ -154,7 +154,7 @@ app.post('/login', (req, res, next) => {
 
 
 app.post('/topdata',async(req,res)=>{
-  const {network,dataPlan,mobileNumber,userId,amountPaid}=req.body;
+  const {network,dataPlan,mobileNumber,userId}=req.body;
   console.log(req.body);
   if(!network || !dataPlan || !mobileNumber || !userId){
     return res.status(400).json({message:'All fields are required'})
